@@ -75,7 +75,7 @@ pre, code, kbd, samp { font-family: monospace, sans-serif; }
 
 body, select, input, textarea {
   /* #444 looks better than black: twitter.com/H_FJ/statuses/11800719859 */
-  color: #444;
+  color: #000; background-color: #444;
   /* set your base font here, to apply evenly */
   /* font-family: Georgia, serif;  */
 }
@@ -171,11 +171,17 @@ button {  width: auto; overflow: visible; }
  /* Primary Styles
     Author: xonecas
  */
+
+
 #fontLoader {
    width: 200px;
    margin: 50px auto;
    font-family: 'oxy';
    font-size: 1.846153846em; /* 24px/13px */
+}
+
+#imageLoader {
+   display: none;
 }
 
 canvas {
