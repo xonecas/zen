@@ -18,7 +18,8 @@
             canvasHeight = $(window).height(),
             center = Math.ceil(canvasWidth / 2),
             currentX = center + 10,
-            currentY = canvasHeight - 58;
+            currentY = canvasHeight - 58,
+            aliens = [];
 
 
          $(canvas).attr({
@@ -36,12 +37,36 @@
 
          ctx.drawImage(laser, currentX, currentY, 38, 38);
 
-         var z = 11, startx = center - 279, consty = 20;
-         while (z--) {
-            ctx.drawImage(alien, startx, consty, 38, 38);
-            startx += 58;
+         var x = 5, z = 11, startx = center - 279, starty = 20;
+         while (x--) {
+            while (z--) {
+               ctx.drawImage(alien, startx, starty, 38, 38);
+               aliens.push({ x: startx, y: starty });
+               startx += 58;
+            }
+            z = 11;
+            startx = center -279;
+            starty += 58;
          }
 
+         function isHit (aliens, missile) {
+            var hit = false,
+               i = aliens.length;
+
+            while (!hit && --i > -1) {
+               var alien = aliens[i];
+               if (missile.y >= alien.y && missile.y <= (alien.y +38)) {
+                  if (missile.x >= alien.x && missile.x <= (alien.x +38)) {
+                     if (!alien.isDead) {
+                        hit = { x: alien.x, y: alien.y };
+                        alien.isDead = true;
+                     }
+                  }
+               }
+            }
+
+            if (hit) return hit;
+         }
 
          $(document).keydown(function (ev) {
             switch(ev.which) {
@@ -77,12 +102,16 @@
                      ctx.fillStyle = '#fff';
                      ctx.fillRect(originX, originY, 2, 10);
                     
-                     if (originY >= -10)
+                     var hit = isHit(aliens, { x: originX, y: originY });
+                     if (originY >= -10 && !hit)
                         setTimeout(fly, 30);
+                     else if (hit) {
+                        ctx.fillStyle = '#444';
+                        ctx.fillRect(hit.x, hit.y, 38, 38);
+                        ctx.fillRect(originX, originY, 2, 10);
+                     }
                   }) ();
                break;
-               default:
-                  ev.preventDefault();
             }
 
             //log(ev.which);
