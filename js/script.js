@@ -1,137 +1,249 @@
-/* Author: xonecas
 
-   this file needs to be cleaned up and organized
-
+/* Author: xonecas 
 */
 
 (function (window, undefined) {
 
-   var document = window.document;
+   var document = window.document,
+      LEFT = 37, RIGHT = 39, SPACE = 32,
+      IMGSIZE = 38, PADSIZE = 20,
+      BG = '#444',
+      BULL_W = 5, BULL_H = 10, BULL_COLOR = '#FFF';
+   
+   function get (id) {
+      return document.getElementById(id);
+   }
+   
+   // oo approach
+   // http://ejohn.org/blog/simple-javascript-inheritance/
 
-   $(window).load(function () {
-      $('#fontLoader').remove();
+   var Shape = Class.extend({
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      ctx: undefined,
+      fill: undefined,
 
-      if (Modernizr.canvas) {
+      // constructor
+      init: function (w, h, ctx, fill) {
+         this.x = 0;
+         this.y = 0;
+         this.width = w;
+         this.height = h;
+         this.ctx = ctx;
+         this.fill = fill;
+      },
 
-         var canvas = document.createElement('canvas'),
-            canvasWidth = $(window).width() - 38,
-            canvasHeight = $(window).height(),
-            center = Math.ceil(canvasWidth / 2),
-            currentX = center + 10,
-            currentY = canvasHeight - 58,
-            aliens = [];
+      // draw the shape
+      draw: function (x, y) {
+         this.x = x;
+         this.y = y;
+         var c =  this.ctx;
+         c.fillStyle = this.fill;
+         c.fillRect(x, y, this.width, this.height);
+      },
 
-
-         $(canvas).attr({
-            'height': canvasHeight,
-            'width': canvasWidth
-         });
-
-         $('#main').html(canvas);
-
-         var ctx = canvas.getContext('2d');
-         var alien = $("#alien").get(0),
-            laser = $('#laser').get(0);
-
-         ctx.fillStyle = '#fff';
-
-         ctx.drawImage(laser, currentX, currentY, 38, 38);
-
-         var x = 5, z = 11, startx = center - 279, starty = 20;
-         while (x--) {
-            while (z--) {
-               ctx.drawImage(alien, startx, starty, 38, 38);
-               aliens.push({ x: startx, y: starty });
-               startx += 58;
-            }
-            z = 11;
-            startx = center -279;
-            starty += 58;
-         }
-
-         function isHit (aliens, missile) {
-            var hit = false,
-               i = aliens.length;
-
-            while (!hit && --i > -1) {
-               var alien = aliens[i];
-               if (missile.y >= alien.y && missile.y <= (alien.y +38)) {
-                  if (missile.x >= alien.x && missile.x <= (alien.x +38)) {
-                     if (!alien.isDead) {
-                        hit = { x: alien.x, y: alien.y };
-                        alien.isDead = true;
-                     }
-                  }
-               }
-            }
-
-            if (hit) return hit;
-         }
-
-         $(document).keydown(function (ev) {
-            switch(ev.which) {
-               case 37: // left arrow
-               case 39: // right arrow
-                  var keepMoving = 10;
-                  (function animate () {
-                     if (currentX <= 38 ||
-                        currentX >= (canvasWidth -38))
-                        return currentX = (currentX <= 38)? 40: canvasWidth -40;
-
-                     ctx.fillStyle = '#444';
-                     ctx.fillRect(currentX -2, currentY , 42, 38);
-
-                     currentX += (ev.which === 37)? -2: 2;
-
-                     ctx.fillStyle = '#ffffff';
-                     ctx.drawImage(laser, currentX, currentY, 38, 38);
-                     if (--keepMoving)
-                        setTimeout(animate, 20);
-                  }) ();
-               break;
-               
-               case 32: // space bar
-                  var originX = currentX +18,
-                     originY = currentY;
-
-                  (function fly () {
-                     ctx.fillStyle = '#444';
-                     ctx.fillRect(originX, originY, 2, 10);
-
-                     originY -= 22;
-                     ctx.fillStyle = '#fff';
-                     ctx.fillRect(originX, originY, 2, 10);
-                    
-                     var hit = isHit(aliens, { x: originX, y: originY });
-                     if (originY >= -10 && !hit)
-                        setTimeout(fly, 30);
-                     else if (hit) {
-                        ctx.fillStyle = '#444';
-                        ctx.fillRect(hit.x, hit.y, 38, 38);
-                        ctx.fillRect(originX, originY, 2, 10);
-                     }
-                  }) ();
-               break;
-            }
-
-            //log(ev.which);
-         });
-      }
-
-      else { // IE or old browser
-         var canvas_ = $('#main'),
-            testString = 'TEST: Hello world!',
-            fillText = document.createElement('div');
-
-         $(fillText).html(testString).css({
-            'top': '20px',
-            'left': '50px'
-         });
-
-         canvas_.html(fillText);
+      // erase the shape
+      clear: function () {
+         var ctx = this.ctx;
+         ctx.fillStyle = BG;
+         ctx.fillRect(this.x, this.y, this.width, this.height);
       }
    });
 
+   var Image = Shape.extend({
+      // call the Shape constructor
+      init: function (w, h, ctx, fill) {
+         this._super(w, h, ctx, fill);
+      },
+      
+      // override
+      // draw the image instead
+      draw: function (x, y) {
+         this.x = x;
+         this.y = y;
+         this.ctx.drawImage(this.fill, x, y, this.width, this.height);
+      }
+   });
+
+   var Bullet = Shape.extend({
+      // call up the chain of constructors
+      init: function (owner, ctx) {
+         this._super(BULL_W, BULL_H, ctx, BULL_COLOR);
+         this.owner = owner;
+      },
+
+      // trigger method
+      fire: function (x, y, targets, limit) {
+         // go up or down?
+         var direction =  (this.owner instanceof Cannon)? -2: 2,
+            that = this;
+
+         (function fly () {
+
+            that.clear();
+            that.draw(x, (y += direction));
+
+            if (!that.isHit(targets) || y <= 0 || y >= limit)
+               setTimeout(fly, 10);
+
+         }) ();
+            
+      },
+
+      // did the bullet hit anything?
+      isHit: function (targets) {
+         var i = targets.length;
+
+         while (--i > -1) {
+            var target = targets[i];
+            if (this.y >= target.y && this.y <= (target.y +IMGSIZE)) {
+               if (this.x >= target.x && this.x <= (target.x +IMGSIZE)) {
+                  if (!target.isDead) {
+                     target.isDead = true;
+                     target.clear();
+                     this.clear();
+                     return true;
+                  }
+               }
+            }
+         }
+         return false;
+      }
+   });
+
+   var Cannon = Image.extend({
+      // use the image constructor
+      init: function (size, ctx, src) {
+         this._super(size, size, ctx, src);
+      },
+      
+      // fire missile!!!
+      shoot: function (targets, limit) {
+         var bullet = new Bullet(this, this.ctx);
+         bullet.fire(Math.floor((this.x + this.width /2)), this.y, targets, limit);
+      },
+
+      // movement controls 
+      move: function (ev) {
+         if (!this.keepMoving) {
+
+            var that = this;
+            this.keepMoving = true;
+            this.direction = ev.which;
+
+            (function move () {
+               if (that.keepMoving) {
+                  that.clear();
+                  that.x += (that.direction === LEFT)? -2: 2;
+                  that.draw(that.x, that.y);
+                  setTimeout(move, 10);
+               }
+            }) ();
+         }
+         else
+            this.direction = ev.which;
+      },
+
+      stop: function (ev) {
+         if (this.keepMoving && this.direction === ev.which)
+            this.keepMoving = false;
+      }
+
+   });
+
+   var Invader = Image.extend({
+      init: function (size, ctx, type) {
+         this._super(size, size, ctx, get(type));
+      }
+   });
+
+   SpaceInvaders = Class.extend({
+      started: false,
+      paused: false,
+      lives: 3,
+      canvas: {},
+      ctx: false,
+      invaders: [],
+      cannon: {},
+      
+      // constructor
+      init: function (canvas) {
+
+         this.canvas = canvas;
+         this.width = canvas.width = $(window).width();
+         this.height = canvas.height = $(window).height();
+         this.ctx = canvas.getContext('2d');
+         this.started = true;
+         this.cannon = new Cannon(IMGSIZE, this.ctx, get('cannon'));
+         this.cannon.draw(this.width /2, this.height - (IMGSIZE + PADSIZE));
+         
+         var rows = 2, cols = 11, index = 0, center = this.width/2,
+            x = Math.floor(center - (((IMGSIZE + PADSIZE) * 11) - 20) /2), y = PADSIZE;
+         while (rows--) {
+            while (cols--) {
+               index = this.invaders.push(new Invader(IMGSIZE, this.ctx, 'skully')) -1;
+               this.invaders[index].draw(x, y);
+               x += IMGSIZE + PADSIZE;
+            }
+            y += IMGSIZE + PADSIZE;
+            x = Math.floor(center - (((IMGSIZE + PADSIZE) * 11) - 20) /2);
+            cols = 11;
+         }
+
+      },
+
+      keydown: function (ev) {
+         switch(ev.which) {
+            case LEFT:
+            case RIGHT:
+               ev.preventDefault();
+               this.cannon.move(ev);
+            break;
+            
+            case SPACE:
+               ev.preventDefault();
+               this.cannon.shoot(this.invaders);
+            break;
+         }
+      },
+      keyup: function (ev) {
+         switch(ev.which) {
+            case LEFT:
+            case RIGHT:
+               ev.preventDefault();
+               this.cannon.stop(ev);
+            break;
+         }
+      }
+      
+
+   });
+
+   window.onload = function () {
+
+      var canvas = document.createElement('canvas');
+      $('#fontLoader').remove();
+      $('body').append(canvas);
+      var game = new SpaceInvaders(canvas);
+
+/*
+      var $doc = $(document);
+      $doc.keydown(game.keydown);
+      $doc.keyup(game.keyup);
+*/
+
+      // this works, but I don't fully understand
+      // why I had to call it like that...
+      document.onkeydown = function (ev) {
+         game.keydown.call(game, ev);
+      }
+      document.onkeyup = function (ev) {
+         game.keyup.call(game, ev);
+      }
+
+   }
 
 }) (window);
 
