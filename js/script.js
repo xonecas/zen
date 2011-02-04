@@ -1,5 +1,6 @@
 
-/* Author: xonecas 
+/* Author: Sean Caetano Martin
+      xonecas 
 */
 
 (function (window, undefined) {
@@ -48,7 +49,7 @@
       clear: function () {
          var ctx = this.ctx;
          ctx.fillStyle = BG;
-         ctx.fillRect(this.x, this.y, this.width, this.height);
+         ctx.clearRect(this.x, this.y, this.width, this.height);
       }
    });
 
@@ -77,7 +78,7 @@
       // trigger method
       fire: function (x, y, targets, limit) {
          // go up or down?
-         var direction =  (this.owner instanceof Cannon)? -2: 2,
+         var direction =  (this.owner instanceof Cannon)? -5: 5,
             that = this;
 
          (function fly () {
@@ -86,7 +87,7 @@
             that.draw(x, (y += direction));
 
             if (!that.isHit(targets) || y <= 0 || y >= limit)
-               setTimeout(fly, 10);
+               setTimeout(fly, 50);
 
          }) ();
             
@@ -104,6 +105,7 @@
                      target.isDead = true;
                      target.clear();
                      this.clear();
+                     targets.splice(i,1);
                      return true;
                   }
                }
@@ -121,8 +123,10 @@
       
       // fire missile!!!
       shoot: function (targets, limit) {
-         var bullet = new Bullet(this, this.ctx);
-         bullet.fire(Math.floor((this.x + this.width /2)), this.y, targets, limit);
+         if (!this.isDead) {
+            var bullet = new Bullet(this, this.ctx);
+            bullet.fire(Math.floor((this.x + this.width /2)), this.y, targets, limit);
+         }
       },
 
       // movement controls 
@@ -134,11 +138,11 @@
             this.direction = ev.which;
 
             (function move () {
-               if (that.keepMoving) {
+               if (that.keepMoving && !that.isDead) {
                   that.clear();
-                  that.x += (that.direction === LEFT)? -2: 2;
+                  that.x += (that.direction === LEFT)? -5: 5;
                   that.draw(that.x, that.y);
-                  setTimeout(move, 10);
+                  setTimeout(move, 50);
                }
             }) ();
          }
@@ -154,8 +158,60 @@
    });
 
    var Invader = Image.extend({
+      isDrawn: false,
+      face: '1',
+      direction: 1,
+
       init: function (size, ctx, type) {
          this._super(size, size, ctx, get(type));
+         this.direction = -1;
+      },
+
+      // the aliens strike back!
+      shoot: function (targets, limit) {
+
+         var bullet = new Bullet(this, this.ctx);
+         bullet.fire(Math.floor((this.x + this.width /2)), this.y, targets, limit);
+
+      },
+
+      // give some dancing abilities to the invaders
+      live: function (x, y) {
+         this.x = x;
+         this.y = y;
+
+         var that = this;
+         (function dance () {
+               
+            that.fill = get('skully'+ that.face);
+            that.face = (that.face === '1')? '2': '1';            
+
+            if (!that.isDead) {
+               if (!that.moving) 
+                  that.draw(that.x, that.y);
+               setTimeout(dance, 500);
+            }
+         
+         }) ();
+
+      },
+
+      move: function (width, others) {
+         var that = this;
+
+         (function trust () {
+            that.moving = true;
+            that.clear();
+            that.x += IMGSIZE * that.direction;
+            if (!that.isDead) {
+               that.draw(that.x, that.y);
+               setTimeout(trust, 1000);
+            }
+            that.moving = false;
+
+            if ((others[others.length -1].x + IMGSIZE) >= width || others[0].x <= (PADSIZE + IMGSIZE))
+               that.direction = (that.direction === 1)? -1: 1;
+         }) ();
       }
    });
 
@@ -184,7 +240,7 @@
          while (rows--) {
             while (cols--) {
                index = this.invaders.push(new Invader(IMGSIZE, this.ctx, 'skully')) -1;
-               this.invaders[index].draw(x, y);
+               this.invaders[index].live(x, y);
                x += IMGSIZE + PADSIZE;
             }
             y += IMGSIZE + PADSIZE;
@@ -192,6 +248,27 @@
             cols = 11;
          }
 
+
+      },
+
+      // Death to HUMANS!
+      invade: function () {
+         var that = this;
+
+         // open fire!
+         (function attack () {
+            if (that.invaders.length > 0) {
+            var random = Math.floor(Math.random() * that.invaders.length);
+
+            that.invaders[random].shoot([ that.cannon ], that.height);
+
+            if (that.started && !that.paused)
+               setTimeout(attack, 3000);
+            }
+         }) ();
+
+         for (var ship = 0; ship < this.invaders.length; ship++)
+            this.invaders[ship].move(this.width, this.invaders);
       },
 
       keydown: function (ev) {
@@ -204,7 +281,7 @@
             
             case SPACE:
                ev.preventDefault();
-               this.cannon.shoot(this.invaders);
+               this.cannon.shoot(this.invaders, 0);
             break;
          }
       },
@@ -228,12 +305,6 @@
       $('body').append(canvas);
       var game = new SpaceInvaders(canvas);
 
-/*
-      var $doc = $(document);
-      $doc.keydown(game.keydown);
-      $doc.keyup(game.keyup);
-*/
-
       // this works, but I don't fully understand
       // why I had to call it like that...
       document.onkeydown = function (ev) {
@@ -243,29 +314,8 @@
          game.keyup.call(game, ev);
       }
 
+      game.invade();
    }
 
 }) (window);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
