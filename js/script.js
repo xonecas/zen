@@ -86,7 +86,8 @@
             that.clear();
             that.draw(x, (y += direction));
 
-            if (!that.isHit(targets) || y <= 0 || y >= limit)
+            if ((!that.isHit(targets) || y <= 0 || y >= limit) &&
+               !that.isBlown)
                setTimeout(fly, 50);
 
          }) ();
@@ -104,7 +105,7 @@
                   if (!target.isDead) {
                      target.isDead = true;
                      target.clear();
-                     this.clear();
+                     this.explode();
                      targets.splice(i,1);
                      return true;
                   }
@@ -112,6 +113,12 @@
             }
          }
          return false;
+      },
+   
+      // be done with this bullet
+      explode: function () {
+         this.clear();
+         this.isBlown = true;
       }
    });
 
