@@ -165,7 +165,6 @@
    });
 
    var Invader = Image.extend({
-      isDrawn: false,
       face: '1',
       direction: 1,
 
@@ -203,22 +202,14 @@
 
       },
 
-      move: function (width, others) {
-         var that = this;
+      move: function (direction) {
+         this.moving = true;
+         this.clear();
+         this.x += IMGSIZE * direction;
+         if (!this.isDead) 
+            this.draw(this.x, this.y);
 
-         (function trust () {
-            that.moving = true;
-            that.clear();
-            that.x += IMGSIZE * that.direction;
-            if (!that.isDead) {
-               that.draw(that.x, that.y);
-               setTimeout(trust, 1000);
-            }
-            that.moving = false;
-
-            if ((others[others.length -1].x + IMGSIZE) >= width || others[0].x <= (PADSIZE + IMGSIZE))
-               that.direction = (that.direction === 1)? -1: 1;
-         }) ();
+         this.moving = false;
       }
    });
 
@@ -241,20 +232,29 @@
          this.started = true;
          this.cannon = new Cannon(IMGSIZE, this.ctx, get('cannon'));
          this.cannon.draw(this.width /2, this.height - (IMGSIZE + PADSIZE));
-         
+
          var rows = 2, cols = 11, index = 0, center = this.width/2,
             x = Math.floor(center - (((IMGSIZE + PADSIZE) * 11) - 20) /2), y = PADSIZE;
+
+         this.formation = {
+            width: (IMGSIZE+PADSIZE)*11-20,
+            height: (IMGSIZE+PADSIZE)*2-20,
+            'x': x, 'y': y,
+            direction: 1
+         };
+         
+
          while (rows--) {
             while (cols--) {
                index = this.invaders.push(new Invader(IMGSIZE, this.ctx, 'skully')) -1;
-               this.invaders[index].live(x, y);
+               var invader = this.invaders[index];
+               invader.live(x, y);
                x += IMGSIZE + PADSIZE;
             }
             y += IMGSIZE + PADSIZE;
             x = Math.floor(center - (((IMGSIZE + PADSIZE) * 11) - 20) /2);
             cols = 11;
          }
-
 
       },
 
@@ -273,9 +273,29 @@
                setTimeout(attack, 3000);
             }
          }) ();
+      },
 
-         for (var ship = 0; ship < this.invaders.length; ship++)
-            this.invaders[ship].move(this.width, this.invaders);
+      moveFormation: function () {
+         var invaders = this.invaders,
+            formation = this.formation,
+            block = PADSIZE+IMGSIZE,
+            that = this;
+
+         (function attackangle () {
+            var x_max = formation.x + formation.width;
+            if (x_max >= that.width - block || formation.x <= PADSIZE )
+               formation.direction = (formation.direction === -1)? 1: -1;
+
+            for (var z=0; z < invaders.length; z++) {
+
+               var invader = invaders[z];
+               invader.move(formation.direction);
+            }
+            formation.x += (block*formation.direction);
+
+                        
+            setTimeout(attackangle, 1000);
+         }) ();
       },
 
       keydown: function (ev) {
@@ -321,6 +341,7 @@
          game.keyup.call(game, ev);
       }
 
+      game.moveFormation();
       game.invade();
    }
 
