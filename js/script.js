@@ -169,7 +169,7 @@
       direction: 1,
 
       init: function (size, ctx, type) {
-         this._super(size, size, ctx, get(type));
+         this._super(size, size, ctx, get(type+this.face));
          this.direction = -1;
       },
 
@@ -182,6 +182,7 @@
       },
 
       // give some dancing abilities to the invaders
+/*
       live: function (x, y) {
          this.x = x;
          this.y = y;
@@ -201,8 +202,11 @@
          }) ();
 
       },
+*/
 
       move: function (direction) {
+         this.fill = get('skully'+ this.face);
+         this.face = (this.face === '1')? '2': '1';            
          this.moving = true;
          this.clear();
          this.x += IMGSIZE * direction;
@@ -248,7 +252,7 @@
             while (cols--) {
                index = this.invaders.push(new Invader(IMGSIZE, this.ctx, 'skully')) -1;
                var invader = this.invaders[index];
-               invader.live(x, y);
+               invader.draw(x, y);
                x += IMGSIZE + PADSIZE;
             }
             y += IMGSIZE + PADSIZE;
@@ -332,8 +336,6 @@
       $('body').append(canvas);
       var game = new SpaceInvaders(canvas);
 
-      // this works, but I don't fully understand
-      // why I had to call it like that...
       document.onkeydown = function (ev) {
          game.keydown.call(game, ev);
       }
